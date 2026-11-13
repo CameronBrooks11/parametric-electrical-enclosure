@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CASE = os.path.join(ROOT, "ultimatewaterproofcase.scad")
+CASE = os.path.join(ROOT, "enclosure.scad")
 
 
 def measure(path):
@@ -62,14 +62,29 @@ for length, width, height, cut in ((120, 80, 50, 15), (80, 80, 30, 8)):
     CASES.append((f"assembled {length} x {width} x {height}, cut {cut}", {**ASSEMBLED, **size},
                   2, length, width, height + 0.03))
 
+# The presets in enclosure.json, which the Customizer loads. The wall-mount
+# flanges add 15 mm at each end of the wall-mounted case.
+PRESETS = os.path.join(ROOT, "enclosure.json")
+WALL = "Wall-mounted, two cable glands and a board"
+LARGE = "Large, with extra screws on both sides"
+CASES += [
+    (f"preset {WALL}, bottom", BOTTOM, 1, 100, 170, 41.71, WALL),
+    (f"preset {WALL}, assembled", ASSEMBLED, 2, 100, 170, 50.03, WALL),
+    (f"preset {LARGE}, bottom", BOTTOM, 1, 200, 150, 41.71, LARGE),
+    (f"preset {LARGE}, assembled", ASSEMBLED, 2, 200, 150, 60.03, LARGE),
+]
+
 
 def main():
     openscad = sys.argv[1] if len(sys.argv) > 1 else "openscad"
     failed = 0
     with tempfile.TemporaryDirectory() as tmp:
         out = os.path.join(tmp, "case.stl")
-        for label, defines, want_solids, *want_size in CASES:
+        for label, defines, want_solids, *rest in CASES:
+            want_size, preset = rest[:3], (rest[3] if len(rest) > 3 else None)
             cmd = [openscad, "--hardwarnings", "--export-format", "binstl", "-o", out, "-D", "$fn=40"]
+            if preset:
+                cmd += ["-p", PRESETS, "-P", preset]
             for name, value in defines.items():
                 cmd += ["-D", f"{name}={value}"]
             result = subprocess.run(cmd + [CASE], capture_output=True, text=True)
