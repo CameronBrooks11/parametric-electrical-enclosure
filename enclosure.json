@@ -1,0 +1,25 @@
+{
+    "parameterSets": {
+        "Wall-mounted, two cable glands and a board": {
+            "Caselength": "100",
+            "CaseWidth": "140",
+            "CaseHeight": "50",
+            "ShowSideWallHoles_A": "true",
+            "CountOfSideWallHoles_A": "2",
+            "ShowSideWallHoles_C": "true",
+            "ShowDeviceHolder1": "true",
+            "EnableMountHolder": "true",
+            "MountHolderStyle": "1",
+            "CountOfMountHolderHoles": "2"
+        },
+        "Large, with extra screws on both sides": {
+            "Caselength": "200",
+            "CaseWidth": "150",
+            "CaseHeight": "60",
+            "CutFromTop": "20",
+            "XAdditionalScrew": "true",
+            "YAdditionalScrew": "true"
+        }
+    },
+    "fileFormatVersion": "1"
+}
