@@ -53,6 +53,8 @@ V   KZZ DATE     COMMENT
 7.0 pb  15.03.25 Added the option to use hot melt copper nut inserts
 7.1 pb  16.03.25 Added solution for 3 pcb holders and 3 side wall holes on each side
 7.2 pb  16.03.25 Added separate gasket option to print it with flexible material like TPU
+7.2.1 cb 13.11.26 Cameron Brooks: the ridge sits 0.01 mm into the bottom's rim instead of 0.01 mm above it,
+                  so the bottom exports as one piece
 
 *******************************************************************************/
 
@@ -1065,7 +1067,7 @@ module BodyQuarterBottom(Caselength, CaseWidth, CutFromTop, CaseRoundingRadius, 
 
             translate([
                 CaseRoundingRadius + ScrewHoleDia / 2 - 0.01, CaseWidth / 2 - OuterBorder - GrooveWidth / 2 - 0.01,
-                CutFromTop + 0.01
+                CutFromTop - 0.01
             ]) translate([ 0, 0, 0 ]) rotate([ 0, 0, 0 ])
                 RidgeStraight(Caselength / 2 - 3 * CaseRoundingRadius - ScrewHoleDia + 0.03);
             translate([
