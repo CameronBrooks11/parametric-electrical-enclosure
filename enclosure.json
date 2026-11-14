@@ -1,25 +1,24 @@
 {
+    "fileFormatVersion": "1",
     "parameterSets": {
         "Wall-mounted, two cable glands and a board": {
-            "Caselength": "100",
-            "CaseWidth": "140",
-            "CaseHeight": "50",
-            "ShowSideWallHoles_A": "true",
-            "CountOfSideWallHoles_A": "2",
-            "ShowSideWallHoles_C": "true",
-            "ShowDeviceHolder1": "true",
-            "EnableMountHolder": "true",
-            "MountHolderStyle": "1",
-            "CountOfMountHolderHoles": "2"
+            "length": "100",
+            "width": "140",
+            "height": "50",
+            "lid_height": "10",
+            "glands_a": "2",
+            "glands_c": "1",
+            "board": "true",
+            "board_spacing": "[60, 90]",
+            "wall_mount": "true",
+            "flange_holes": "2"
         },
         "Large, with extra screws on both sides": {
-            "Caselength": "200",
-            "CaseWidth": "150",
-            "CaseHeight": "60",
-            "CutFromTop": "20",
-            "XAdditionalScrew": "true",
-            "YAdditionalScrew": "true"
+            "length": "200",
+            "width": "150",
+            "height": "60",
+            "lid_height": "20",
+            "extra_screws": "true"
         }
-    },
-    "fileFormatVersion": "1"
+    }
 }
