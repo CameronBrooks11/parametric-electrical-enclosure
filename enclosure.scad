@@ -104,11 +104,11 @@ inner_r = max(corner_radius - wall, 1);
 // Screws: [size, clearance hole, countersunk head diameter, counterbore diameter,
 // counterbore depth, heat-set insert hole, insert depth, hex nut across flats, nut height]
 SCREWS = [
-  [2, 2.4, 4.0, 4.2, 2.0, 3.2, 4.0, 4.0, 1.6],
-  [2.5, 2.9, 5.0, 5.0, 2.5, 3.6, 5.0, 5.0, 2.0],
-  [3, 3.4, 6.0, 6.0, 3.0, 4.0, 5.7, 5.5, 2.4],
-  [4, 4.5, 8.0, 7.6, 4.0, 5.6, 8.1, 7.0, 3.2],
-  [5, 5.5, 10.0, 9.2, 5.0, 6.4, 9.5, 8.0, 4.0],
+    [2, 2.4, 4.0, 4.2, 2.0, 3.2, 4.0, 4.0, 1.6],
+    [2.5, 2.9, 5.0, 5.0, 2.5, 3.6, 5.0, 5.0, 2.0],
+    [3, 3.4, 6.0, 6.0, 3.0, 4.0, 5.7, 5.5, 2.4],
+    [4, 4.5, 8.0, 7.6, 4.0, 5.6, 8.1, 7.0, 3.2],
+    [5, 5.5, 10.0, 9.2, 5.0, 6.4, 9.5, 8.0, 4.0],
 ];
 S = [for (s = SCREWS) if (s[0] == screw) s][0];
 assert(!is_undef(S), str("screw must be 2, 2.5, 3, 4 or 5, not ", screw));
@@ -126,108 +126,132 @@ assert(bottom_h > floor_thickness + groove_full + 2, "the case is too shallow fo
 assert(wall >= groove_width + 1.2, str("wall must be at least groove_width + 1.2 (", groove_width + 1.2, ") so the groove has walls"));
 assert(corner_radius > wall, "corner_radius must be more than wall");
 
-function pillars() = concat(
-  [for (sx = [-1, 1], sy = [-1, 1]) [sx * (length / 2 - pillar_in), sy * (width / 2 - pillar_in)]],
-  extra_screws
-    ? [[0, -(width / 2 - pillar_in)], [0, width / 2 - pillar_in],
-       [-(length / 2 - pillar_in), 0], [length / 2 - pillar_in, 0]]
-    : []);
+function pillars() =
+    concat(
+        [for (sx = [-1, 1], sy = [-1, 1]) [sx * (length / 2 - pillar_in), sy * (width / 2 - pillar_in)]],
+        extra_screws ? [
+                [0, -(width / 2 - pillar_in)],
+                [0, width / 2 - pillar_in],
+                [-(length / 2 - pillar_in), 0],
+                [length / 2 - pillar_in, 0],
+            ]
+        : []
+    );
 
 // ---------------- 2D outlines ----------------
 
 module rounded(size, r) {
-  offset(r = r) square([size[0] - 2 * r, size[1] - 2 * r], center = true);
+    offset(r=r) square([size[0] - 2 * r, size[1] - 2 * r], center=true);
 }
 module outline() rounded([length, width], corner_radius);
 module cavity() rounded(inner, inner_r);
 // The groove's (or ridge's) footprint: a band of width w along the middle of the wall.
 module seal_band(w) {
-  difference() {
-    offset(delta = -(wall - w) / 2) outline();
-    offset(delta = -(wall + w) / 2) outline();
-  }
+    difference() {
+        offset(delta=-(wall - w) / 2) outline();
+        offset(delta=-(wall + w) / 2) outline();
+    }
 }
 
 // ---------------- The bottom ----------------
 
 module bottom() {
-  difference() {
-    union() {
-      difference() {
-        linear_extrude(bottom_h) outline();
-        translate([0, 0, floor_thickness]) linear_extrude(bottom_h) cavity();
-      }
-      for (p = pillars()) translate([p[0], p[1], 0]) cylinder(r = pillar_r, h = bottom_h);
-      if (board) for (sx = [-1, 1], sy = [-1, 1])
-        translate([board_offset[0] + sx * board_spacing[0] / 2, board_offset[1] + sy * board_spacing[1] / 2, 0])
-          cylinder(d = standoff_diameter, h = floor_thickness + standoff_height);
-      if (wall_mount) flanges();
+    difference() {
+        union() {
+            difference() {
+                linear_extrude(bottom_h) outline();
+                translate([0, 0, floor_thickness]) linear_extrude(bottom_h) cavity();
+            }
+            for (p = pillars()) translate([p[0], p[1], 0]) cylinder(r=pillar_r, h=bottom_h);
+            if (board)
+                for (sx = [-1, 1], sy = [-1, 1])
+                    translate([board_offset[0] + sx * board_spacing[0] / 2, board_offset[1] + sy * board_spacing[1] / 2, 0])
+                        cylinder(d=standoff_diameter, h=floor_thickness + standoff_height);
+            if (wall_mount) flanges();
+        }
+        // The groove, from the rim down.
+        translate([0, 0, bottom_h - groove_full]) linear_extrude(groove_full + 1) seal_band(groove_width);
+        // Screw holes: an insert's hole from the rim down, or a clearance hole right
+        // through with a hex pocket for the nut from underneath.
+        for (p = pillars())
+            translate([p[0], p[1], 0]) {
+                if (nut == "insert")
+                    translate([0, 0, bottom_h - S[6]]) cylinder(d=S[5], h=S[6] + 1);
+                else {
+                    translate([0, 0, -1]) cylinder(d=S[1], h=bottom_h + 2);
+                    translate([0, 0, -1]) cylinder(d=S[7] / cos(30) + 0.3, h=S[8] + 1.2, $fn=6);
+                }
+            }
+        if (board)
+            for (sx = [-1, 1], sy = [-1, 1])
+                translate([board_offset[0] + sx * board_spacing[0] / 2, board_offset[1] + sy * board_spacing[1] / 2, floor_thickness])
+                    cylinder(d=standoff_hole, h=standoff_height + 1);
+        glands();
     }
-    // The groove, from the rim down.
-    translate([0, 0, bottom_h - groove_full]) linear_extrude(groove_full + 1) seal_band(groove_width);
-    // Screw holes: an insert's hole from the rim down, or a clearance hole right
-    // through with a hex pocket for the nut from underneath.
-    for (p = pillars()) translate([p[0], p[1], 0]) {
-      if (nut == "insert") translate([0, 0, bottom_h - S[6]]) cylinder(d = S[5], h = S[6] + 1);
-      else {
-        translate([0, 0, -1]) cylinder(d = S[1], h = bottom_h + 2);
-        translate([0, 0, -1]) cylinder(d = S[7] / cos(30) + 0.3, h = S[8] + 1.2, $fn = 6);
-      }
-    }
-    if (board) for (sx = [-1, 1], sy = [-1, 1])
-      translate([board_offset[0] + sx * board_spacing[0] / 2, board_offset[1] + sy * board_spacing[1] / 2, floor_thickness])
-        cylinder(d = standoff_hole, h = standoff_height + 1);
-    glands();
-  }
 }
 
 // Gland holes: through each wall, spread evenly along it, gland_height above the floor.
 module glands() {
-  z = floor_thickness + gland_height;
-  module along(n, span) for (i = [0:n - 1]) translate([0, (i - (n - 1) / 2) * span / max(n, 1), 0]) children();
-  // [count, wall's centre, rotation, usable span]
-  for (w = [[glands_a, [length / 2, 0], 0, width - 2 * corner_radius],
+    z = floor_thickness + gland_height;
+    module along(n, span)for (i = [0:n - 1]) translate([0, (i - (n - 1) / 2) * span / max(n, 1), 0]) children();
+    // [count, wall's centre, rotation, usable span]
+    for (
+        w = [
+            [glands_a, [length / 2, 0], 0, width - 2 * corner_radius],
             [glands_b, [0, -width / 2], -90, length - 2 * corner_radius],
             [glands_c, [-length / 2, 0], 180, width - 2 * corner_radius],
-            [glands_d, [0, width / 2], 90, length - 2 * corner_radius]])
-    if (w[0] > 0) translate([w[1][0], w[1][1], z]) rotate(w[2])
-      along(w[0], w[3]) rotate([0, 90, 0]) cylinder(d = gland_diameter, h = 3 * wall, center = true);
+            [glands_d, [0, width / 2], 90, length - 2 * corner_radius],
+        ]
+    )
+        if (w[0] > 0)
+            translate([w[1][0], w[1][1], z]) rotate(w[2])
+                    along(w[0], w[3]) rotate([0, 90, 0]) cylinder(d=gland_diameter, h=3 * wall, center=true);
 }
 
 // Flanges past both ends (along y), on the floor, with holes for wall screws.
 module flanges() {
-  for (sy = [-1, 1]) difference() {
-    hull() {
-      translate([0, sy * width / 2 * 0.5, 0]) linear_extrude(flange_thickness) square([length - 2 * corner_radius, width / 2], center = true);
-      for (sx = [-1, 1]) translate([sx * (length / 2 - corner_radius), sy * (width / 2 + flange_length - 5), 0])
-        cylinder(r = 5, h = flange_thickness);
-    }
-    for (i = [0:flange_holes - 1])
-      translate([(i - (flange_holes - 1) / 2) * (length - 2 * corner_radius) / max(flange_holes, 1),
-                 sy * (width / 2 + flange_length / 2), -1])
-        cylinder(d = flange_hole_diameter, h = flange_thickness + 2);
-  }
+    for (sy = [-1, 1])
+        difference() {
+            hull() {
+                translate([0, sy * width / 2 * 0.5, 0]) linear_extrude(flange_thickness) square([length - 2 * corner_radius, width / 2], center=true);
+                for (sx = [-1, 1])
+                    translate([sx * (length / 2 - corner_radius), sy * (width / 2 + flange_length - 5), 0])
+                        cylinder(r=5, h=flange_thickness);
+            }
+            for (i = [0:flange_holes - 1])
+                translate(
+                    [
+                        (i - (flange_holes - 1) / 2) * (length - 2 * corner_radius) / max(flange_holes, 1),
+                        sy * (width / 2 + flange_length / 2),
+                        -1,
+                    ]
+                )
+                    cylinder(d=flange_hole_diameter, h=flange_thickness + 2);
+        }
 }
 
 // ---------------- The lid, drawn upside down: its top on z = 0 ----------------
 
 module lid() {
-  difference() {
-    union() {
-      difference() {
-        linear_extrude(lid_height) outline();
-        translate([0, 0, floor_thickness]) linear_extrude(lid_height) cavity();
-      }
-      for (p = pillars()) translate([p[0], p[1], 0]) cylinder(r = pillar_r, h = lid_height);
-      // The ridge, standing up from the lid's rim into the groove.
-      translate([0, 0, lid_height - EPS]) linear_extrude(ridge_h + EPS) seal_band(ridge_w);
+    difference() {
+        union() {
+            difference() {
+                linear_extrude(lid_height) outline();
+                translate([0, 0, floor_thickness]) linear_extrude(lid_height) cavity();
+            }
+            for (p = pillars()) translate([p[0], p[1], 0]) cylinder(r=pillar_r, h=lid_height);
+            // The ridge, standing up from the lid's rim into the groove.
+            translate([0, 0, lid_height - EPS]) linear_extrude(ridge_h + EPS) seal_band(ridge_w);
+        }
+        for (p = pillars())
+            translate([p[0], p[1], 0]) {
+                translate([0, 0, -1]) cylinder(d=S[1], h=lid_height + 2);
+                if (head == "countersunk")
+                    translate([0, 0, -EPS]) cylinder(d1=S[2], d2=0, h=S[2] / 2);
+                else
+                    translate([0, 0, -1]) cylinder(d=S[3], h=S[4] + 1);
+            }
     }
-    for (p = pillars()) translate([p[0], p[1], 0]) {
-      translate([0, 0, -1]) cylinder(d = S[1], h = lid_height + 2);
-      if (head == "countersunk") translate([0, 0, -EPS]) cylinder(d1 = S[2], d2 = 0, h = S[2] / 2);
-      else translate([0, 0, -1]) cylinder(d = S[3], h = S[4] + 1);
-    }
-  }
 }
 
 // The gasket: a ring in the groove's extra depth, standing 2 * fit proud of it, so the
@@ -239,27 +263,40 @@ module gasket_part() linear_extrude(gasket_height + 2 * fit) seal_band(groove_wi
 // The lid turned over onto the bottom, its rim on the bottom's rim. A 0.05 mm gap keeps
 // the parts separate in an export.
 module assembled() {
-  bottom();
-  translate([0, 0, height + 0.05]) mirror([0, 0, 1]) lid();
-  if (gasket) color("dimgray") translate([0, 0, bottom_h - groove_full]) gasket_part();
+    bottom();
+    translate([0, 0, height + 0.05]) mirror([0, 0, 1]) lid();
+    if (gasket) color("dimgray") translate([0, 0, bottom_h - groove_full]) gasket_part();
 }
 
-echo(str("Case ", length, " x ", width, " x ", height, " mm outside, ",
-         inner[0], " x ", inner[1], " x ", height - 2 * floor_thickness, " mm inside"));
-echo(str("Screws: ", len(pillars()), " x M", screw, ", at least ", ceil(screw_len), " mm long, ",
-         head, ", into ", nut == "insert" ? "heat-set inserts" : "hex nuts"));
+echo(
+    str(
+        "Case ", length, " x ", width, " x ", height, " mm outside, ",
+        inner[0], " x ", inner[1], " x ", height - 2 * floor_thickness, " mm inside"
+    )
+);
+echo(
+    str(
+        "Screws: ", len(pillars()), " x M", screw, ", at least ", ceil(screw_len), " mm long, ",
+        head, ", into ", nut == "insert" ? "heat-set inserts" : "hex nuts"
+    )
+);
 
-if (part == "bottom") bottom();
-else if (part == "lid") lid();
-else if (part == "gasket") gasket_part();
+if (part == "bottom")
+    bottom();
+else if (part == "lid")
+    lid();
+else if (part == "gasket")
+    gasket_part();
 else if (part == "all") {
-  bottom();
-  translate([length + 10, 0, 0]) lid();
-  if (gasket) translate([-length - 10, 0, 0]) gasket_part();
-}
-else if (part == "assembled") assembled();
-else if (part == "section") difference() {
-  assembled();
-  translate([0, -width, -1]) cube([length, 2 * width + 2 * flange_length, height + 2]);
-}
-else assert(part == "none", str("unknown part ", part));
+    bottom();
+    translate([length + 10, 0, 0]) lid();
+    if (gasket) translate([-length - 10, 0, 0]) gasket_part();
+} else if (part == "assembled")
+    assembled();
+else if (part == "section")
+    difference() {
+        assembled();
+        translate([0, -width, -1]) cube([length, 2 * width + 2 * flange_length, height + 2]);
+    }
+else
+    assert(part == "none", str("unknown part ", part));
