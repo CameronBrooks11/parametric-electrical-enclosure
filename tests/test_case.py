@@ -5,7 +5,9 @@ usage: python3 tests/test_case.py [OPENSCAD]
 Each render uses --hardwarnings and $fn = 40. A binary STL's separate solids
 are counted (triangles sharing a vertex belong to the same solid) and its size
 checked to within 0.01 mm. A render OpenSCAD reports as empty counts as no
-overlap, which is what the seal checks expect.
+overlap, which is what the seal checks expect. Each example in examples/ is
+rendered and checked against EXAMPLE_SIZES. Any ERROR or WARNING from OpenSCAD
+fails the run.
 """
 
 import os
@@ -18,6 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CASE = os.path.join(ROOT, "enclosure.scad")
 FIT = os.path.join(ROOT, "tests", "fit.scad")
 PRESETS = os.path.join(ROOT, "enclosure.json")
+EXAMPLES = os.path.join(ROOT, "examples")
 
 
 def measure(path):
@@ -52,11 +55,15 @@ def render(openscad, scad, out, defines, preset=None):
     for name, value in defines.items():
         cmd += ["-D", f"{name}={value}"]
     result = subprocess.run(cmd + [scad], capture_output=True, text=True)
+    # A failed assert can leave the exit status at 0, or the output empty, so read
+    # the messages before either.
+    errors = [l for l in result.stderr.splitlines() if l.startswith(("WARNING", "ERROR"))]
+    if errors:
+        raise RuntimeError(f"{os.path.basename(scad)}: {'; '.join(errors)}")
     if "empty" in result.stderr.lower():
         return None
     if result.returncode != 0:
-        errors = [l for l in result.stderr.splitlines() if "WARNING" in l or "ERROR" in l]
-        raise RuntimeError(f"openscad exited {result.returncode}: {'; '.join(errors)}")
+        raise RuntimeError(f"openscad exited {result.returncode}: {result.stderr.strip()[-200:]}")
     return measure(out)
 
 
@@ -108,6 +115,12 @@ SEAL = [
     ("the ridge presses the gasket", {"CHECK": '"gasket"', "gasket": "true"}, 0.3),
 ]
 
+# Each example lays out its three parts: solids, then the size across y and z (the
+# bottom's height), which the parts share.
+EXAMPLE_SIZES = {
+    "sensor_box.scad": (3, 70, 25),
+}
+
 
 def main():
     openscad = sys.argv[1] if len(sys.argv) > 1 else "openscad"
@@ -136,7 +149,18 @@ def main():
             if not ok:
                 failed += 1
             print(f"{'ok  ' if ok else 'FAIL'} seal, {label}: {line}")
-    total = len(CASES) + len(SEAL)
+        examples = sorted(os.listdir(EXAMPLES))
+        for name in examples:
+            got = render(openscad, os.path.join(EXAMPLES, name), out, {})
+            want = EXAMPLE_SIZES.get(name)
+            ok = got is not None and want is not None and got[0] == want[0] and all(
+                abs(a - b) <= 0.01 for a, b in zip(got[1][1:], want[1:]))
+            line = "empty" if got is None else f"{got[0]} solids, {' x '.join(f'{s:.2f}' for s in got[1])} mm"
+            if not ok:
+                failed += 1
+                line += f"; expected {want}" if want else "; no expected size in EXAMPLE_SIZES"
+            print(f"{'ok  ' if ok else 'FAIL'} examples/{name}: {line}")
+    total = len(CASES) + len(SEAL) + len(examples)
     print(f"{total - failed} of {total} checks passed")
     sys.exit(1 if failed else 0)
 

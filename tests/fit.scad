@@ -11,8 +11,10 @@ DX = 0;
 
 module seated_lid() translate([DX, 0, height]) mirror([0, 0, 1]) lid();
 
-if (CHECK == "seated") intersection() { bottom(); seated_lid(); }
-else if (CHECK == "gasket") intersection() {
-  translate([0, 0, bottom_h - groove_full]) gasket_part();
-  seated_lid();
-}
+if (CHECK == "seated")
+    intersection() { bottom(); seated_lid(); }
+else if (CHECK == "gasket")
+    intersection() {
+        translate([0, 0, bottom_h - groove_full]) gasket_part();
+        seated_lid();
+    }

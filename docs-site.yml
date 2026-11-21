@@ -1,1 +1,3 @@
+title: parametric-electrical-enclosure
+description: A parametric, waterproof enclosure for electronics in OpenSCAD, printed without supports
 models: enclosure.scad

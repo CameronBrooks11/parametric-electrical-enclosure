@@ -35,6 +35,9 @@ in TPU. With hex nuts, the nuts go into pockets under the floor.
 - **Large, with extra screws on both sides**: 200 × 150 × 60 mm, a 20 mm lid,
   and a screw midway along each side as well as at the corners.
 
+`examples/sensor_box.scad` includes the file and sets it up for a small sensor
+box with one gland, hex nuts and a board.
+
 ## Parameters
 
 | Group | Parameters |
@@ -64,7 +67,12 @@ piece of the right size, and that assembled the bottom and lid are two. Then
 it checks the seal through `tests/fit.scad`: seated, the lid only touches the
 bottom; moved 0.25 mm sideways its ridge still clears the groove, and at
 0.35 mm it runs into the groove's wall; and the ridge presses the gasket by
-0.3 mm. `just images` renders the pictures in this README.
+0.3 mm. Last, it renders each example and checks its three parts. Any `ERROR`
+or `WARNING` from OpenSCAD fails the run.
+
+`just check` checks the `.scad` files are formatted with
+[topiary](https://github.com/tweag/topiary) 0.8.0; `just fmt` formats them.
+`just images` renders the pictures in this README.
 
 ## Origin and licence
 
